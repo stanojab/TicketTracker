@@ -1,0 +1,28 @@
+@use '@angular/material' as mat;
+
+// Material's official override API: compile-time checked token names.
+@mixin chip-colors($background, $text) {
+  @include mat.chips-overrides(
+    (
+      elevated-container-color: $background,
+      label-text-color: $text,
+      label-text-weight: 600,
+    )
+  );
+}
+
+.priority-low {
+  @include chip-colors(#e6f4ea, #1e6b34);
+}
+
+.priority-medium {
+  @include chip-colors(#e3eefc, #1a4f9c);
+}
+
+.priority-high {
+  @include chip-colors(#fff0db, #9a4b00);
+}
+
+.priority-urgent {
+  @include chip-colors(#fde2e1, #b3261e);
+}

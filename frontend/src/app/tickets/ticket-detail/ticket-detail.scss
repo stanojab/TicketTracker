@@ -1,0 +1,41 @@
+.layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0;
+  font: var(--mat-sys-label-large);
+}
+
+.status-resolved {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.summary {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+}
+
+.body {
+  white-space: pre-wrap;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  padding-top: 16px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

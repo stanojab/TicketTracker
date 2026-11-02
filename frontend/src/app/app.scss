@@ -1,0 +1,24 @@
+mat-toolbar {
+  gap: 8px;
+  background: var(--mat-sys-surface-container);
+}
+
+.brand {
+  color: inherit;
+  font: var(--mat-sys-title-large);
+  text-decoration: none;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.active {
+  background: var(--mat-sys-secondary-container);
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}

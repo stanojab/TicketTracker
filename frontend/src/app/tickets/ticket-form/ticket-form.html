@@ -1,0 +1,49 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>New ticket</mat-card-title>
+    <mat-card-subtitle>Paste the customer's email. AI suggests category, priority and a reply.</mat-card-subtitle>
+  </mat-card-header>
+
+  @if (submitting()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()" id="ticket-form">
+      <mat-form-field>
+        <mat-label>Customer email address</mat-label>
+        <input matInput type="email" formControlName="customerEmail" autocomplete="off" />
+        @if (form.controls.customerEmail.hasError('required')) {
+          <mat-error>Email address is required</mat-error>
+        } @else if (form.controls.customerEmail.hasError('email')) {
+          <mat-error>Enter a valid email address</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Subject</mat-label>
+        <input matInput formControlName="subject" maxlength="200" />
+        @if (form.controls.subject.hasError('required')) {
+          <mat-error>Subject is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Email body</mat-label>
+        <textarea matInput formControlName="body" rows="10"></textarea>
+        @if (form.controls.body.hasError('required')) {
+          <mat-error>Email body is required</mat-error>
+        } @else if (form.controls.body.hasError('maxlength')) {
+          <mat-error>Email body is too long (max 10,000 characters)</mat-error>
+        }
+      </mat-form-field>
+    </form>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <a mat-button routerLink="/tickets">Cancel</a>
+    <button mat-flat-button type="submit" form="ticket-form" [disabled]="submitting()">
+      {{ submitting() ? 'Triaging…' : 'Create ticket' }}
+    </button>
+  </mat-card-actions>
+</mat-card>

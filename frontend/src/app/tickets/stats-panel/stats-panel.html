@@ -1,0 +1,27 @@
+@if (stats(); as stats) {
+  <div class="panel">
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>By category</mat-card-title></mat-card-header>
+      <mat-card-content class="counts">
+        @for (category of categories; track category) {
+          <div class="count">
+            <span class="number">{{ stats.byCategory[category] }}</span>
+            <span class="label">{{ category }}</span>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>By priority</mat-card-title></mat-card-header>
+      <mat-card-content class="counts">
+        @for (priority of priorities; track priority) {
+          <div class="count">
+            <span class="number">{{ stats.byPriority[priority] }}</span>
+            <app-priority-chip [priority]="priority" />
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+}

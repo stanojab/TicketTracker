@@ -1,0 +1,12 @@
+<mat-toolbar>
+  <a class="brand" routerLink="/tickets">TicketTriage</a>
+  <span class="spacer"></span>
+  <a mat-button routerLink="/tickets" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+    Tickets
+  </a>
+  <a mat-flat-button routerLink="/tickets/new">New ticket</a>
+</mat-toolbar>
+
+<main>
+  <router-outlet />
+</main>

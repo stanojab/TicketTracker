@@ -1,0 +1,86 @@
+<a mat-button routerLink="/tickets">← Back to tickets</a>
+
+@if (ticket(); as ticket) {
+  <div class="layout">
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>{{ ticket.subject }}</mat-card-title>
+        <mat-card-subtitle>
+          From {{ ticket.customerEmail }} · {{ ticket.createdAt | date: 'medium' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="meta">
+          <app-priority-chip [priority]="ticket.priority" />
+          <span>{{ ticket.category }}</span>
+          <span>Sentiment: {{ ticket.sentiment }}</span>
+          <span [class]="'status-' + ticket.status.toLowerCase()">{{ ticket.status }}</span>
+        </div>
+
+        @if (ticket.summary) {
+          <p class="summary"><strong>AI summary:</strong> {{ ticket.summary }}</p>
+        }
+
+        <h3>Customer email</h3>
+        <p class="body">{{ ticket.body }}</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Triage &amp; reply</mat-card-title>
+        <mat-card-subtitle>Correct the AI's suggestions if needed.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="save()" id="triage-form">
+          <div class="row">
+            <mat-form-field>
+              <mat-label>Category</mat-label>
+              <mat-select formControlName="category">
+                @for (category of categories; track category) {
+                  <mat-option [value]="category">{{ category }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Priority</mat-label>
+              <mat-select formControlName="priority">
+                @for (priority of priorities; track priority) {
+                  <mat-option [value]="priority">{{ priority }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <mat-form-field>
+            <mat-label>Reply to customer</mat-label>
+            <textarea matInput formControlName="suggestedReply" rows="12"></textarea>
+            @if (form.controls.suggestedReply.hasError('maxlength')) {
+              <mat-error>Reply is too long (max 5,000 characters)</mat-error>
+            }
+          </mat-form-field>
+        </form>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button mat-button type="button" [cdkCopyToClipboard]="form.controls.suggestedReply.value">
+          Copy reply
+        </button>
+        <button mat-stroked-button type="submit" form="triage-form" [disabled]="saving() || form.pristine">
+          Save changes
+        </button>
+        @if (ticket.status === 'OPEN') {
+          <button mat-flat-button type="button" (click)="setStatus('RESOLVED')" [disabled]="saving()">
+            Mark resolved
+          </button>
+        } @else {
+          <button mat-flat-button type="button" (click)="setStatus('OPEN')" [disabled]="saving()">
+            Reopen
+          </button>
+        }
+      </mat-card-actions>
+    </mat-card>
+  </div>
+} @else {
+  <p>Loading ticket…</p>
+}

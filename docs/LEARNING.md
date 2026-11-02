@@ -214,3 +214,98 @@ Swapping the model, e.g. to `claude-haiku-5-5` for high volume at lower cost, ne
   one contract-style test against a fake HTTP server to test the real client wiring.
 - *Why `!mock` instead of `@ConditionalOnMissingBean`?* It's explicit and easy to read: the profile name says which
   implementation is active.
+
+---
+
+## Milestone 3 — Angular frontend (Angular 22 + Angular Material)
+
+### Project layout
+```
+src/app/
+  app.ts / app.html            shell: toolbar + <router-outlet>
+  app.config.ts                app-wide providers (router, HttpClient, interceptor)
+  app.routes.ts                URL → page (lazy-loaded)
+  error.interceptor.ts         shows API errors in a snackbar
+  tickets/
+    ticket.model.ts            TypeScript types mirroring the backend DTOs
+    ticket.service.ts          all HTTP calls
+    ticket-list/               filters + table (+ stats panel)
+    ticket-form/               create ticket (reactive form)
+    ticket-detail/             view, correct, reply, resolve
+    priority-chip/             reusable coloured chip
+    stats-panel/               counts from GET /api/stats
+```
+- Since v20, Angular's style guide drops the `.component` suffix: `ticket-list.ts` holds class `TicketList`.
+
+### Standalone components (no NgModules)
+- Every component lists what its template uses in `imports: [...]`, e.g. `MatTableModule` or `PriorityChip`.
+  *React analogy:* importing the components you render.
+- `bootstrapApplication(App, appConfig)` starts the app. `app.config.ts` registers providers:
+  - `provideRouter(routes, withComponentInputBinding())`
+  - `provideHttpClient(withFetch(), withInterceptors([...]))`
+- The app is **zoneless** (the default since Angular 21): no zone.js. Change detection is driven by **signals**,
+  events and `async` work that Angular knows about. `ChangeDetectionStrategy.OnPush` on every component
+  means "only re-render when inputs or signals change".
+
+### Dependency injection in Angular
+- `inject(TicketService)` inside a component or service is Angular's DI, like constructor injection in Spring.
+- `@Injectable({ providedIn: 'root' })` creates a single app-wide instance, like a Spring singleton bean.
+- In tests I swap the real service for a fake with `{ provide: TicketService, useValue: { create } }`.
+
+### Signals and RxJS
+- **Signals** (`signal()`, `input()`, `toSignal()`) hold UI state. Templates read them as functions: `ticket()`.
+  *React analogy:* `useState`, but fine-grained: only what reads the signal re-renders.
+- `HttpClient` returns **Observables**. I convert them with `toSignal()` where the template needs a value.
+- Ticket list filtering:
+  ```ts
+  filters.valueChanges.pipe(startWith(current), switchMap(f => service.list(f)))
+  ```
+  **`switchMap` cancels the previous HTTP request** when the filter changes, so a slow old response can't overwrite a newer
+  one (a classic interview question).
+- `catchError(() => of([]))` inside the `switchMap` keeps the stream alive after an error.
+- `takeUntilDestroyed()` unsubscribes automatically when the component is destroyed, which prevents memory leaks.
+
+### Routing
+- `loadComponent: () => import(...)` **lazy-loads** each page. The initial bundle went from 724 kB to 460 kB, and each page
+  is downloaded on first visit.
+- `withComponentInputBinding()` passes route params straight to inputs: `id = input.required<string>()` on
+  `tickets/:id`. No `ActivatedRoute` boilerplate.
+- Route order matters: `tickets/new` is listed before `tickets/:id`.
+- `title` on a route sets the browser tab title.
+
+### Reactive forms
+- `FormBuilder.nonNullable.group({...})` creates a typed form model in the component.
+  - `form.getRawValue()` is typed.
+  - `reset()` goes back to the initial values, not `null`.
+- The validators (`required`, `email`, `maxLength`) **mirror the backend's Bean Validation**: the client gives fast feedback, and
+  the server stays the source of truth.
+- `[formGroup]` / `formControlName` bind inputs. `form.controls.x.hasError('email')` drives `<mat-error>`.
+- On submit an invalid form is `markAllAsTouched()` so every error shows. The detail page's Save button is disabled
+  while the form is `pristine`.
+- *React analogy:* react-hook-form, with the form state living in the component class.
+
+### HTTP interceptor
+- `errorInterceptor` is a function interceptor that runs for every request, like an Axios interceptor or Express middleware.
+- It shows the backend's ProblemDetail `detail` in a `MatSnackBar`, then re-throws the error so the component can reset
+  its loading state.
+
+### Angular Material (Material 3)
+- Material is themed in `styles.scss` with `mat.theme(...)`, which generates CSS variables (`--mat-sys-primary`, ...).
+  Component styles use those variables, so colours stay consistent.
+- Priority chip colours use `mat.chips-overrides(...)`, the **official, compile-time-checked** way to restyle a
+  Material component. No `::ng-deep` hacks.
+- Components used: toolbar, table, select, form field, input, card, chips, snack bar, progress bar, and `cdkCopyToClipboard`.
+
+### Template control flow
+- `@if`, `@for (x of list; track x)` and `@else` are the built-in syntax that replaces `*ngIf` and `*ngFor`.
+- `track` is required: it tells Angular how to identify items so it reuses DOM nodes, like React's `key`.
+
+### Dev proxy (no CORS)
+- `proxy.conf.json` forwards `/api` from the dev server (port 4200) to Spring Boot (port 8080).
+- The browser only talks to one origin, so the backend needs no CORS configuration. In Docker and Azure, nginx does the same job (M4).
+
+### Tests (Vitest + jsdom)
+- Angular 21+ uses **Vitest** by default (previously Karma + Jasmine). The tests run in jsdom, so no browser is needed in CI.
+- `provideHttpClientTesting()` + `HttpTestingController` assert on the requests the service sends: URL, method, params, body.
+- Component tests use `TestBed.createComponent` and work with the real DOM: type into inputs, submit the form, check
+  what's rendered. `vi.fn()` and `vi.spyOn()` are mocks, like Mockito.
