@@ -309,3 +309,72 @@ src/app/
 - `provideHttpClientTesting()` + `HttpTestingController` assert on the requests the service sends: URL, method, params, body.
 - Component tests use `TestBed.createComponent` and work with the real DOM: type into inputs, submit the form, check
   what's rendered. `vi.fn()` and `vi.spyOn()` are mocks, like Mockito.
+
+---
+
+## Milestone 4 — Docker, CI and Azure
+
+### Multi-stage Dockerfiles
+- **Stage 1 (build)** uses a big image with the toolchain: `eclipse-temurin:21-jdk` + Maven, or `node:24` + npm.
+- **Stage 2 (runtime)** copies only the result: the jar onto `eclipse-temurin:21-jre-alpine`, or the static files onto `nginx:1.30-alpine`.
+  The runtime image has no compiler, no source and no `node_modules`, so it's smaller, has less attack surface, and builds the same way everywhere.
+- **Layer caching:** copy `pom.xml` or `package*.json` first and download dependencies, then copy the source. Editing code
+  doesn't re-download dependencies. A BuildKit `--mount=type=cache` keeps the Maven repository between builds.
+- **Running as non-root:** the backend image creates and uses an `app` user.
+- `-XX:MaxRAMPercentage=75`: the JVM sizes its heap from the **container's** memory limit.
+- Tests are skipped in the image build (`-DskipTests`) because CI runs them. Testcontainers needs Docker, which isn't
+  available inside a `docker build`.
+
+### nginx as a reverse proxy
+- nginx serves the Angular files, and `location /api/` → `proxy_pass ${BACKEND_URL}` forwards API calls to Spring Boot.
+- `try_files $uri $uri/ /index.html` is the **SPA fallback**. A deep link like `/tickets/42` returns `index.html` and the Angular
+  router renders the page. Without it you'd get 404 on refresh.
+- `BACKEND_URL` is filled in at **container start** (the nginx image runs envsubst on `/etc/nginx/templates`). The same image works in
+  Compose (`http://backend:8080`) and Azure (`https://<internal-fqdn>`): **build once, configure per environment**.
+- Hashed JS and CSS are cached for a year; `index.html` is `no-cache`, so new deployments are picked up immediately.
+
+### Docker Compose
+- Three services (`db`, `backend`, `frontend`) on one network, reachable by service name (`jdbc:postgresql://db:5432/...`).
+- `depends_on: condition: service_healthy` and healthchecks (`pg_isready`, `/actuator/health/readiness`) start things
+  in the right order.
+- Configuration comes from `.env` (git-ignored), with defaults like `${SPRING_PROFILES_ACTIVE:-dev,mock}`, so
+  `docker compose up` works without any setup.
+
+### GitHub Actions CI
+- A **workflow** (`.github/workflows/ci.yml`) is triggered on push to `main` and on pull requests.
+- **Jobs** run in parallel on fresh Ubuntu VMs, and **steps** run in order:
+  - `backend`: `setup-java` with Maven cache, then `./mvnw verify`. Testcontainers uses the runner's Docker.
+  - `frontend`: `setup-node` with npm cache, then `npm ci`, tests, build.
+  - `docker`: `needs: [backend, frontend]`, builds both images (not pushed).
+- `concurrency` cancels outdated runs, and `permissions: contents: read` gives least privilege to the token.
+- `npm ci` (not `npm install`) installs exactly what's in `package-lock.json`, so builds are reproducible.
+- The executable bit on `mvnw` is stored in git (`git update-index --chmod=+x`), otherwise Linux runners get "permission denied".
+
+### Azure concepts (see DEPLOYMENT.md for the commands)
+- **Resource group:** a folder for related resources. Deleting it deletes everything inside.
+- **Azure Container Registry (ACR):** a private Docker registry. *Analogy:* a private Docker Hub.
+- **Azure Container Apps:** a serverless container platform built on Kubernetes, but you never manage the cluster.
+  - **Environment:** shared network, DNS and log boundary for several apps. Apps call each other by name or FQDN.
+  - **Ingress:** **external** gets a public HTTPS URL with a managed certificate; **internal** is reachable only inside the environment.
+    The backend is internal, so only nginx can reach it.
+  - **Revisions:** every deployment or config change creates an immutable revision, which enables rollbacks and traffic splitting.
+  - **Scaling:** `min/max-replicas`. Scale to zero saves money but costs a cold start; the JVM takes ~10 s.
+  - **Secrets:** stored on the app and injected as env vars with `secretref:`. Key Vault references are the next step up.
+  - **Managed identity:** an Azure-managed identity for the app (no passwords). Here it pulls images from ACR with the
+    `AcrPull` role. *Interview line:* "no credentials in config, access is granted with RBAC."
+  - Logs go to **Log Analytics** (`az containerapp logs show`).
+- **Azure Database for PostgreSQL Flexible Server:** managed Postgres with patching, backups and HA options.
+  - Burstable B1ms is the cheap dev tier.
+  - TLS is required (`sslmode=require`).
+  - The firewall rule `0.0.0.0` means "allow Azure services". The production upgrade is VNet with private access plus Entra ID authentication.
+- **Twelve-factor config:** the same image runs everywhere. Environment-specific settings (`SPRING_DATASOURCE_URL`,
+  `BACKEND_URL`, API key) come from env vars, which is why `application.yml` has no credentials.
+
+### Quick interview answers
+- *Why Container Apps instead of AKS or App Service?* Containers without running Kubernetes yourself; scale to zero; built-in
+  HTTPS ingress, revisions and secrets. It fits a small two-container app. AKS is for when you need full Kubernetes control.
+- *How do the frontend and backend talk in Azure?* The browser only hits the public nginx app. nginx proxies `/api` to the
+  backend's internal ingress, so the API isn't exposed to the internet and there's no CORS.
+- *How are secrets handled?* `.env` locally (git-ignored, with `.env.example` committed); Container Apps secrets in Azure; never in images or git.
+- *How would you add CD?* A GitHub Actions job after CI that signs in to Azure with OIDC (federated credentials, no stored secret),
+  pushes the images to ACR and runs `az containerapp update --image ...:${{ github.sha }}`.

@@ -1,0 +1,33 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Reverse proxy: the browser calls /api on the same origin (no CORS),
+    # nginx forwards to the Spring Boot backend.
+    location /api/ {
+        proxy_pass ${BACKEND_URL};
+        # Use the backend's own host name (needed for HTTPS/SNI on Azure Container Apps).
+        proxy_set_header Host $proxy_host;
+        proxy_ssl_server_name on;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # AI triage can take a while.
+        proxy_read_timeout 90s;
+    }
+
+    # Hashed build files never change: cache them for a year.
+    location ~* \.(?:js|css|woff2?|ico|png|svg)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # Single-page app: unknown paths (e.g. /tickets/42) return index.html,
+    # and the Angular router takes over.
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}

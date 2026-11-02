@@ -1,5 +1,9 @@
 name: tickettriage
 
+# Full local stack: PostgreSQL + Spring Boot API + Angular (served by nginx).
+#   docker compose up --build    then open http://localhost:8081
+# Settings come from .env (copy .env.example). Without .env it runs in mock mode.
+
 services:
   db:
     image: postgres:17-alpine
@@ -16,6 +20,37 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev,mock}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/tickettriage
+      SPRING_DATASOURCE_USERNAME: tickettriage
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-tickettriage}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5-5}
+    ports:
+      - "${BACKEND_PORT:-8090}:8080"   # direct access, e.g. Swagger UI at /swagger-ui.html
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "${FRONTEND_PORT:-8081}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:
