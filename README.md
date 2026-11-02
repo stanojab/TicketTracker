@@ -6,7 +6,6 @@
 ![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0-6DB33F)
 ![Angular](https://img.shields.io/badge/Angular-22-DD0031)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1)
-![Azure](https://img.shields.io/badge/Azure-Container%20Apps-0078D4)
 
 AI-assisted triage for customer support emails. A support agent pastes an email. An LLM classifies it, rates its
 urgency, summarises it and drafts a reply. The agent stays in control: they can correct the classification, edit the
@@ -95,7 +94,7 @@ sequenceDiagram
 | Database | PostgreSQL 17 |
 | Frontend | Angular 22 (standalone components, signals, reactive forms, zoneless), Angular Material 3 |
 | Tests | JUnit 5, Mockito, AssertJ, MockMvc, Testcontainers; Vitest for Angular |
-| Delivery | Docker multi-stage builds, Docker Compose, GitHub Actions, Azure Container Apps + Azure Database for PostgreSQL |
+| Delivery | Docker multi-stage builds, Docker Compose, GitHub Actions CI |
 
 ## Quick start (Docker Compose)
 
@@ -202,5 +201,9 @@ docker-compose.yml           full local stack
 
 ## Deployment
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for deploying to **Azure Container Apps** with **Azure Database for
-PostgreSQL Flexible Server**, step by step with the Azure CLI.
+The app is not hosted publicly. It is packaged as two stateless containers configured entirely through environment
+variables, so it runs on any container platform.
+
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) is a step-by-step plan, using the Azure CLI, for running it on **Azure Container
+Apps** with **Azure Database for PostgreSQL Flexible Server**. It covers a private registry pulled with a managed identity,
+an internal-only API, secrets, and revisions.
