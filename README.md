@@ -187,7 +187,6 @@ backend/                     Spring Boot API
 frontend/                    Angular app (+ nginx config for production)
 docs/
   DEPLOYMENT.md              step-by-step Azure deployment with the az CLI
-  LEARNING.md                concepts behind each part of the project
 docker-compose.yml           full local stack
 ```
 
