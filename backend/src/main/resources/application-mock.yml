@@ -1,0 +1,7 @@
+# "mock" profile: no LLM calls, no API key needed.
+# MockTriageClient (@Profile("mock")) replaces SpringAiTriageClient,
+# and the Anthropic chat model auto-configuration is switched off.
+spring:
+  ai:
+    model:
+      chat: none

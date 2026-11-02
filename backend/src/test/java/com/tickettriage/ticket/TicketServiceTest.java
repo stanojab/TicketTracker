@@ -6,6 +6,8 @@ import com.tickettriage.ticket.dto.CreateTicketResponse;
 import com.tickettriage.ticket.dto.StatsResponse;
 import com.tickettriage.ticket.dto.TicketResponse;
 import com.tickettriage.ticket.dto.UpdateTicketRequest;
+import com.tickettriage.triage.TriageClient;
+import com.tickettriage.triage.TriageResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -31,23 +33,58 @@ class TicketServiceTest {
     @Mock
     private TicketRepository ticketRepository;
 
+    @Mock
+    private TriageClient triageClient;
+
     @InjectMocks
     private TicketService ticketService;
 
+    private static final CreateTicketRequest REQUEST =
+            new CreateTicketRequest("anna@example.com", "Charged twice", "Please refund me");
+
     @Test
-    void create_savesOpenTicketWithDefaults() {
+    void create_appliesAiTriageAndSaves() {
+        when(triageClient.triage("Charged twice", "Please refund me")).thenReturn(new TriageResult(
+                Category.BILLING, Priority.HIGH, Sentiment.NEGATIVE, "Double charge.", "Sorry, refunding now."));
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CreateTicketResponse response = ticketService.create(
-                new CreateTicketRequest("anna@example.com", "Hello", "I have a question"));
+        CreateTicketResponse response = ticketService.create(REQUEST);
 
         TicketResponse ticket = response.ticket();
         assertThat(ticket.customerEmail()).isEqualTo("anna@example.com");
-        assertThat(ticket.category()).isEqualTo(Category.OTHER);
-        assertThat(ticket.priority()).isEqualTo(Priority.MEDIUM);
-        assertThat(ticket.sentiment()).isEqualTo(Sentiment.NEUTRAL);
+        assertThat(ticket.category()).isEqualTo(Category.BILLING);
+        assertThat(ticket.priority()).isEqualTo(Priority.HIGH);
+        assertThat(ticket.sentiment()).isEqualTo(Sentiment.NEGATIVE);
+        assertThat(ticket.summary()).isEqualTo("Double charge.");
+        assertThat(ticket.suggestedReply()).isEqualTo("Sorry, refunding now.");
         assertThat(ticket.status()).isEqualTo(TicketStatus.OPEN);
         assertThat(response.warning()).isNull();
+    }
+
+    @Test
+    void create_savesWithDefaultsAndWarningWhenTriageFails() {
+        when(triageClient.triage(any(), any())).thenThrow(new RuntimeException("LLM timeout"));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateTicketResponse response = ticketService.create(REQUEST);
+
+        assertThat(response.ticket().category()).isEqualTo(Category.OTHER);
+        assertThat(response.ticket().priority()).isEqualTo(Priority.MEDIUM);
+        assertThat(response.ticket().sentiment()).isEqualTo(Sentiment.NEUTRAL);
+        assertThat(response.ticket().suggestedReply()).isNull();
+        assertThat(response.warning()).isEqualTo(TicketService.TRIAGE_WARNING);
+        verify(ticketRepository).save(any(Ticket.class));
+    }
+
+    @Test
+    void create_truncatesOverlongSummaryFromLlm() {
+        when(triageClient.triage(any(), any())).thenReturn(new TriageResult(
+                Category.OTHER, Priority.LOW, Sentiment.NEUTRAL, "x".repeat(800), "Reply"));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateTicketResponse response = ticketService.create(REQUEST);
+
+        assertThat(response.ticket().summary()).hasSize(500);
     }
 
     @Test

@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +26,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Full stack test: HTTP (MockMvc) -> controller -> service -> JPA -> Flyway-migrated PostgreSQL.
+ * Uses the "mock" profile, so triage is done by the keyword-based MockTriageClient.
  * {@code @Transactional} rolls back after each test, so tests don't see each other's data.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("mock")
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class TicketApiIntegrationTest {
@@ -40,12 +43,16 @@ class TicketApiIntegrationTest {
     void createListUpdateAndCountTickets() throws Exception {
         long id = createTicket("lisa@example.com", "Wrong invoice", "My invoice shows the wrong amount.");
 
+        // Triaged by MockTriageClient ("invoice" -> BILLING)
         mockMvc.perform(get("/api/tickets/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.subject").value("Wrong invoice"))
+                .andExpect(jsonPath("$.category").value("BILLING"))
+                .andExpect(jsonPath("$.suggestedReply").isNotEmpty())
                 .andExpect(jsonPath("$.status").value("OPEN"))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty());
 
+        // The agent corrects the AI's choice and resolves the ticket
         mockMvc.perform(patch("/api/tickets/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -72,6 +79,21 @@ class TicketApiIntegrationTest {
                 .andExpect(jsonPath("$.byCategory.BILLING").value(1))
                 .andExpect(jsonPath("$.byCategory.TECHNICAL").value(0))
                 .andExpect(jsonPath("$.byPriority.HIGH").value(1));
+    }
+
+    @Test
+    void createStillSavesTicketWhenTriageFails() throws Exception {
+        mockMvc.perform(post("/api/tickets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerEmail": "x@example.com", "subject": "Invoice question",
+                                 "body": "simulate-ai-failure"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ticket.id").isNumber())
+                .andExpect(jsonPath("$.ticket.category").value("OTHER"))
+                .andExpect(jsonPath("$.ticket.priority").value("MEDIUM"))
+                .andExpect(jsonPath("$.warning").isNotEmpty());
     }
 
     @Test

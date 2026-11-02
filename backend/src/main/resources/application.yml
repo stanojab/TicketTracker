@@ -13,6 +13,18 @@ spring:
     open-in-view: false
   flyway:
     locations: classpath:db/migration
+  ai:
+    model:
+      # Which chat model auto-configuration is active: "anthropic" or "none" (see application-mock.yml).
+      chat: anthropic
+    anthropic:
+      # From the environment only. Never commit a real key.
+      api-key: ${ANTHROPIC_API_KEY:}
+      # Fail fast so the user gets the fallback quickly instead of a hanging request.
+      timeout: 60s
+      max-retries: 1
+      chat:
+        model: ${ANTHROPIC_MODEL:claude-opus-5-5}
 
 management:
   endpoints:
