@@ -1,0 +1,25 @@
+# Base configuration, shared by every environment.
+# Database connection settings are NOT here: they come from the environment
+# (SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD), from application-dev.yml
+# for local development, or from Testcontainers in integration tests.
+spring:
+  application:
+    name: tickettriage
+  jpa:
+    # Flyway owns the schema; Hibernate only checks that entities match it.
+    hibernate:
+      ddl-auto: validate
+    # Don't keep a DB session open while the JSON response is rendered.
+    open-in-view: false
+  flyway:
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

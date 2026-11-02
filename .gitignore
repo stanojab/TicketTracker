@@ -1,0 +1,25 @@
+# Secrets and local environment
+.env
+*.env
+!.env.example
+
+# Java / Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db

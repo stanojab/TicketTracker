@@ -1,0 +1,11 @@
+# Local development profile (SPRING_PROFILES_ACTIVE=dev).
+# Defaults match the Postgres container in docker-compose.yml.
+# These are throwaway local credentials, not secrets; real ones come from env vars.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/tickettriage
+    username: tickettriage
+    password: tickettriage
+  flyway:
+    # Also apply the sample-data migration in db/seed (dev only).
+    locations: classpath:db/migration,classpath:db/seed
