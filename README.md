@@ -1,6 +1,6 @@
 # TicketTriage
 
-[![CI](https://github.com/stanojab/TickerTracker/actions/workflows/ci.yml/badge.svg)](https://github.com/stanojab/TickerTracker/actions/workflows/ci.yml)
+[![CI](https://github.com/stanojab/TicketTracker/actions/workflows/ci.yml/badge.svg)](https://github.com/stanojab/TicketTracker/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F)
 ![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0-6DB33F)
@@ -102,8 +102,8 @@ sequenceDiagram
 Requires only Docker.
 
 ```bash
-git clone https://github.com/stanojab/TickerTracker.git
-cd TickerTracker
+git clone https://github.com/stanojab/TicketTracker.git
+cd TicketTracker
 docker compose up --build
 ```
 
