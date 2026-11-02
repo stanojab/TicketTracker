@@ -1,6 +1,6 @@
 # TicketTriage
 
-[![CI](https://github.com/YOUR_GITHUB_USER/tickettriage/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/tickettriage/actions/workflows/ci.yml)
+[![CI](https://github.com/stanojab/TickerTracker/actions/workflows/ci.yml/badge.svg)](https://github.com/stanojab/TickerTracker/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F)
 ![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0-6DB33F)
@@ -29,11 +29,17 @@ TicketTriage automates that first pass:
 
 ## Screenshots
 
-> _Screenshots coming soon._
->
-> | Ticket list with filters and stats | Ticket detail with AI suggestions |
-> |---|---|
-> | `docs/screenshots/list.png` | `docs/screenshots/detail.png` |
+**Ticket queue:** stats, filters and color-coded priorities, with urgent issues on top of the list.
+
+![Ticket list with stats, filters and priority chips](docs/screenshots/list.png)
+
+**Ticket detail:** the AI's category, priority, sentiment, summary and draft reply, all editable by the agent.
+
+![Ticket detail with AI summary and editable suggested reply](docs/screenshots/detail.png)
+
+**New ticket:** paste a customer email and the backend triages it.
+
+![New ticket form](docs/screenshots/new-ticket.png)
 
 ## Architecture
 
@@ -96,8 +102,8 @@ sequenceDiagram
 Requires only Docker.
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/tickettriage.git
-cd tickettriage
+git clone https://github.com/stanojab/TickerTracker.git
+cd TickerTracker
 docker compose up --build
 ```
 
